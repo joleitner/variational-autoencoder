@@ -1,0 +1,17 @@
+name: vae
+channels:
+  - conda-forge
+  - defaults
+  - pytorch
+  - nvidia
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - ipykernel
+  - pytorch
+  - pytorch-cuda=12.1 # with gpu
+  - torchvision
+  - torchaudio
