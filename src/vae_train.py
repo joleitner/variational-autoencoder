@@ -4,10 +4,11 @@ import torch.utils
 import torch.nn.functional as F
 import torch.nn as nn
 import torch
-import argparse
 import os
+import typer
+from typing_extensions import Annotated
+from rich import print
 from model import VAE
-
 
 INITAL_DIM = 784
 
@@ -31,7 +32,7 @@ def loss_function(x, x_hat, kld):
     return reproduction_loss + kld
 
 
-def train(model, optimizer, data_loader, epochs):
+def train(model, optimizer, data_loader, epochs, device):
 
     for epoch in range(epochs):
 
@@ -49,53 +50,66 @@ def train(model, optimizer, data_loader, epochs):
             loss.backward()
             optimizer.step()
 
-        print("\tEpoch", epoch + 1, "\tAverage Loss: ",
-              overall_loss / len(data_loader.dataset))
+        print("\tEpoch", epoch + 1,
+              "\tAverage Loss: {:.3f}".format(overall_loss / len(data_loader.dataset)))
 
     return model
 
 
-if __name__ == "__main__":
+def main(
+        data_path: Annotated[str, typer.Option(
+            "--data-path", "-d",
+            help="Path to the data",
+            rich_help_panel="Train data",
+            prompt="Path to the dataset to train on",
+            show_default=False
+        )],
+        batch_size: Annotated[int, typer.Option(
+            help="Batch size",
+            rich_help_panel="Train data",
+            prompt="Batch size for training"
+        )] = 128,
+        hidden_dim: Annotated[int, typer.Option(
+            help="Dimensions of hidden layer", rich_help_panel="Model Parameters")] = 512,
+        latent_dim: Annotated[int, typer.Option(
+            help="Dimension of lantent space (z)", rich_help_panel="Model Parameters")] = 2,
+        epochs: Annotated[int, typer.Option(
+            help="Epochs to train", rich_help_panel="Training parameters")] = 10,
+        save: Annotated[str, typer.Option(
+            help="Path to save the model",
+            rich_help_panel="Model Parameters",
+            prompt="Where would you like to save the model?",
+        )] = 'models/model.pth'
+):
+    """
+    Train a Variational Autoencoder
 
-    parser = argparse.ArgumentParser(description='Train VAE on MNIST')
 
-    # Required parameters
-    parser.add_argument('--data-path', type=str,
-                        help='Path to dataset', required=True)
-    parser.add_argument('--batch-size', type=int,
-                        default=128, help='Batch size')
-    parser.add_argument('--hidden-dim', type=int,
-                        default=512, help='Hidden dimension')
-    parser.add_argument('--latent-dim', type=int,
-                        help='Latent dimension', required=True)
-    parser.add_argument('--epochs', type=int,
-                        default=50, help='Number of epochs')
-
-    parser.add_argument(
-        '--save', type=str, default='models/model.pth', help='Path to save model. For example: ./models/model_v1.pth')
-
-    args = parser.parse_args()
+    """
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    data_loader = load_data(args.data_path, args.batch_size)
+    data_loader = load_data(data_path, batch_size)
 
-    # calculate input dimension
-    INITAL_DIM = data_loader.dataset.data.shape[1] * \
-        data_loader.dataset.data.shape[2]
-
-    model = VAE(initial_dim=INITAL_DIM, hidden_dim=args.hidden_dim,
-                latent_dim=args.latent_dim, device=device).to(device)
-    print("Created model: ", model)
+    model = VAE(initial_dim=INITAL_DIM, hidden_dim=hidden_dim,
+                latent_dim=latent_dim, device=device).to(device)
+    print("Your created Model:")
+    print(model)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    print("Training starting on", str(device).upper())
-    model = train(model, optimizer, data_loader, args.epochs)
+    print(
+        f"Training starting on [bold green]{str(device).upper()}[/bold green]")
+
+    model = train(model, optimizer, data_loader, epochs, device)
 
     # Save model
-    save_dir = os.path.dirname(args.save)
+    save_dir = os.path.dirname(save)
     # Check if the directory exists, and create it if it doesn't
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
-    torch.save(model, args.save)
-    print("Model saved to", args.save)
+    torch.save(model, save)
+    print("Model saved to", save)
+
+
+if __name__ == "__main__":
+    typer.run(main)

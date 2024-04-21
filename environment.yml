@@ -11,6 +11,7 @@ dependencies:
   - matplotlib
   - seaborn
   - ipykernel
+  - typer
   - pytorch
   - pytorch-cuda=12.1 # with gpu
   - torchvision
