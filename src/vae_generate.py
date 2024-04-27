@@ -2,12 +2,15 @@ import torch.distributions
 import torch.nn.functional as F
 import torch.nn as nn
 import torch
+import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+import numpy as np
 from PIL import Image
 import os
 import typer
 from typing import Annotated
 from rich import print
+from utils import load_model_config, load_checkpoint
 from model import VAE
 
 
@@ -19,6 +22,38 @@ def _validate_latent_vector(latent_vector: str):
     return latent_vector
 
 
+def _reshape_image(output, data_shape):
+
+    if len(data_shape) != 3:
+        raise ValueError("data_shape must be a tuple of length 3 (channels, width, height).")
+
+    # Reshape the data based on the number of channels
+    if data_shape[0] == 1:  # Grayscale image
+        image_array = output.detach().cpu().reshape(data_shape[1], data_shape[2]).numpy()
+        mode = "L"
+    elif data_shape[0] == 3:  # RGB image
+        image_array = (
+            output.detach().cpu().reshape(data_shape[1], data_shape[2], data_shape[0]).numpy()
+        )
+        mode = "RGB"
+    else:  # Invalid number of channels
+        raise ValueError(
+            "Unsupported number of channels in data_shape. Only grayscale (1) or RGB (3) images supported."
+        )
+
+    # Assuming model output might not be normalized and could have any range
+    # We normalize to 0-1 range and then scale to 0-255
+    image_array = np.clip(image_array, 0, 1)
+    image_array = (image_array * 255).astype(np.uint8)  # Convert to uint8
+
+    image = Image.fromarray(image_array, mode=mode)
+    return image
+
+
+app = typer.Typer(pretty_exceptions_show_locals=False, add_completion=False)
+
+
+@app.command()
 def generate(
     model_path: Annotated[
         str,
@@ -42,7 +77,7 @@ def generate(
             help="Path to save the generated image",
         ),
     ] = "images/image.jpg",
-    plot: Annotated[bool, typer.Option("--plot", help="Plot the generated image")] = False,
+    plot: Annotated[bool, typer.Option(help="Plot the generated image")] = False,
 ):
     """
     Train a Variational Autoencoder
@@ -50,17 +85,28 @@ def generate(
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # load the model and generate the image
-    model: VAE = torch.load(model_path)
+    config = load_model_config(model_path)
+    checkpoint = load_checkpoint(model_path)
+    model = VAE(
+        initial_dim=config["initial_dim"],
+        hidden_dims=config["hidden_dims"],
+        latent_dim=config["latent_dim"],
+        device=device,
+    ).to(device)
+    model.load_state_dict(checkpoint["model_state_dict"])
+
+    model.eval()
 
     # convert the latent vector to list of floats
     latent_vector = [float(item) for item in latent_vector.split(",")]
     # convert the latent vector to tensor
     latent_vector = torch.tensor(latent_vector).to(device)
 
-    x_hat = model.decoder(latent_vector)
-    img_array = x_hat.detach().cpu().reshape(28, 28)  # reshape vector to 2d array
-    image = Image.fromarray(img_array.numpy() * 255).convert("L")
+    # Use torch.no_grad() to disable gradient computation during inference
+    with torch.no_grad():
+        output = model.decoder(latent_vector)
+
+    image = _reshape_image(output, config["data_shape"])
 
     # Save the generated image
     save_dir = os.path.dirname(save)
@@ -70,8 +116,10 @@ def generate(
     image.save(save)
 
     if plot:
+        plt.imshow(image, cmap="gray" if config["data_shape"][0] == 1 else None)
+        plt.axis("off")
         plt.show()
 
 
 if __name__ == "__main__":
-    typer.run(generate)
+    app()

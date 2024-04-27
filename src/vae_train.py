@@ -7,7 +7,7 @@ import typer
 from typing import Annotated
 from rich import print
 from model import VAE
-from utils import load_dataset
+from utils import load_dataset, save_model_config, save_checkpoint
 
 
 def loss_function(x, x_hat, kld):
@@ -35,13 +35,10 @@ def train(model, optimizer, data_loader, epochs, device, initial_dim):
             loss.backward()
             optimizer.step()
 
-        print(
-            "\tEpoch",
-            epoch + 1,
-            "\tAverage Loss: {:.3f}".format(overall_loss / len(data_loader.dataset)),
-        )
+        loss = overall_loss / len(data_loader.dataset)
+        print("\tEpoch", epoch + 1, "\tAverage Loss: {:.3f}".format(loss))
 
-    return model
+    return loss
 
 
 def _validate_hidden_dims(hidden_dims: str):
@@ -52,6 +49,20 @@ def _validate_hidden_dims(hidden_dims: str):
     return hidden_dims
 
 
+def _validate_resize(resize: str):
+    try:
+        valid = [int(item) for item in resize.split(",")]
+        if len(valid) != 2:
+            raise ValueError
+    except ValueError:
+        raise typer.BadParameter("Please provide resize dimensions as comma-separated integers")
+    return resize
+
+
+app = typer.Typer(pretty_exceptions_show_locals=False, add_completion=False)
+
+
+@app.command()
 def main(
     data_path: Annotated[
         str,
@@ -71,8 +82,13 @@ def main(
         ),
     ] = 32,
     resize: Annotated[
-        tuple[int, int],
-        typer.Option(help="Resize of original image", rich_help_panel="Train data"),
+        str,
+        typer.Option(
+            help="Resize of original image",
+            rich_help_panel="Train data",
+            prompt="Resize input image (width, height)",
+            callback=_validate_resize,
+        ),
     ] = None,
     hidden_dims: Annotated[
         str,
@@ -104,7 +120,7 @@ def main(
             rich_help_panel="Model Parameters",
             prompt="Where would you like to save the model?",
         ),
-    ] = "models/model.pth",
+    ] = "models/my_model",
 ):
     """
     Train a Variational Autoencoder
@@ -114,7 +130,11 @@ def main(
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    data_loader = load_dataset(data_path, batch_size, resize, grayscale=True)
+    # resize string to tuple
+    if resize:
+        resize = tuple([int(item) for item in resize.split(",")])
+
+    data_loader = load_dataset(data_path, batch_size, resize, grayscale=False)
     # Calculate the initial dimensions (input size) for the VAE model
     images, _ = next(iter(data_loader))
     initial_dim = images[0].view(-1).shape[0]
@@ -131,17 +151,12 @@ def main(
 
     print(f"Training starting on [bold green]{str(device).upper()}[/bold green]")
 
-    model = train(model, optimizer, data_loader, epochs, device, initial_dim)
+    loss = train(model, optimizer, data_loader, epochs, device, initial_dim)
 
-    # Save model
-    save_dir = os.path.dirname(save)
-    # Check if the directory exists, and create it if it doesn't
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    torch.save(model, save)
-    print("Model saved to", save)
+    save_model_config(initial_dim, hidden_dims, latent_dim, data_shape=images[0].shape, path=save)
+    save_checkpoint(model, optimizer, epochs, loss, path=save)
+    print(f"Model saved to [bold green]{save}[/bold green] :floppy_disk:")
 
 
 if __name__ == "__main__":
-    # typer.Typer(pretty_exceptions_show_locals=False)
-    typer.run(main)
+    app()
