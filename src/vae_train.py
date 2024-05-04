@@ -17,30 +17,6 @@ def loss_function(x, x_hat, kld):
     return reproduction_loss + kld
 
 
-def train(model, optimizer, data_loader, epochs, device, initial_dim):
-
-    for epoch in range(epochs):
-
-        overall_loss = 0
-        for batch_idx, (x, _) in enumerate(data_loader):
-
-            x = x.view(-1, initial_dim).to(device)
-
-            optimizer.zero_grad()
-            x_hat = model(x)
-            loss = loss_function(x, x_hat, kld=model.encoder.kld)
-
-            overall_loss += loss.item()
-
-            loss.backward()
-            optimizer.step()
-
-        loss = overall_loss / len(data_loader.dataset)
-        print("\tEpoch", epoch + 1, "\tAverage Loss: {:.3f}".format(loss))
-
-    return loss
-
-
 def _validate_hidden_dims(hidden_dims: str):
     try:
         valid = [int(item) for item in hidden_dims.split(",")]
@@ -63,7 +39,7 @@ app = typer.Typer(pretty_exceptions_show_locals=False, add_completion=False)
 
 
 @app.command()
-def main(
+def train(
     data_path: Annotated[
         str,
         typer.Option(
@@ -123,7 +99,7 @@ def main(
     ] = "models/my_model",
 ):
     """
-    Train a Variational Autoencoder
+    Define and train a Variational Autoencoder on a given dataset.
 
 
     """
@@ -147,13 +123,41 @@ def main(
 
     print("Your created Model:")
     print(model)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-
     print(f"Training starting on [bold green]{str(device).upper()}[/bold green]")
 
-    loss = train(model, optimizer, data_loader, epochs, device, initial_dim)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    save_model_config(initial_dim, hidden_dims, latent_dim, data_shape=images[0].shape, path=save)
+    # Train the model
+    for epoch in range(epochs):
+
+        overall_loss = 0
+        for batch_idx, (x, _) in enumerate(data_loader):
+
+            x = x.view(-1, initial_dim).to(device)
+
+            optimizer.zero_grad()
+            x_hat = model(x)
+            loss = loss_function(x, x_hat, kld=model.encoder.kld)
+
+            overall_loss += loss.item()
+
+            loss.backward()
+            optimizer.step()
+
+        loss = overall_loss / len(data_loader.dataset)
+        print("\tEpoch", epoch + 1, "\tAverage Loss: {:.3f}".format(loss))
+
+    # Save the model
+    config = {
+        "initial_dim": initial_dim,
+        "hidden_dims": hidden_dims,
+        "latent_dim": latent_dim,
+        "data_shape": images[0].shape,
+    }
+    if resize:
+        config["resize"] = resize
+
+    save_model_config(config, path=save)
     save_checkpoint(model, optimizer, epochs, loss, path=save)
     print(f"Model saved to [bold green]{save}[/bold green] :floppy_disk:")
 

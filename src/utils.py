@@ -6,7 +6,7 @@ import os
 import json
 
 
-def load_dataset(path, batch_size, resize=None, grayscale=False):
+def load_dataset(path, batch_size, resize=None, grayscale=False, shuffle=True):
 
     transform = []
     if resize:
@@ -18,17 +18,11 @@ def load_dataset(path, batch_size, resize=None, grayscale=False):
     transform = transforms.Compose(transform)
 
     dataset = ImageFolder(root=path, transform=transform)
-    data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
+    data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
     return data_loader
 
 
-def save_model_config(inital_dim, hidden_dims, latent_dim, data_shape, path):
-    config = {
-        "initial_dim": inital_dim,
-        "hidden_dims": hidden_dims,
-        "latent_dim": latent_dim,
-        "data_shape": data_shape,
-    }
+def save_model_config(config, path):
     file_name = "model_config.json"
     file_path = os.path.join(path, file_name)
     dir_path = os.path.dirname(file_path)

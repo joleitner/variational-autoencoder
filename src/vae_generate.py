@@ -41,11 +41,10 @@ def _reshape_image(output, data_shape):
             "Unsupported number of channels in data_shape. Only grayscale (1) or RGB (3) images supported."
         )
 
-    # Assuming model output might not be normalized and could have any range
+    # Assuming model output is not normalized and could have any range
     # We normalize to 0-1 range and then scale to 0-255
     image_array = np.clip(image_array, 0, 1)
-    image_array = (image_array * 255).astype(np.uint8)  # Convert to uint8
-
+    image_array = (image_array * 255).astype(np.uint8)
     image = Image.fromarray(image_array, mode=mode)
     return image
 
@@ -57,7 +56,7 @@ app = typer.Typer(pretty_exceptions_show_locals=False, add_completion=False)
 def generate(
     model_path: Annotated[
         str,
-        typer.Argument(help="Path to the model"),
+        typer.Argument(help="Path to the trained model"),
     ],
     latent_vector: Annotated[
         str,
@@ -65,7 +64,7 @@ def generate(
             "--latent-vector",
             "-v",
             help="Number of latent variables to generate from (e.g. 1.0,2.3 for 2 dimensional latent space)",
-            prompt="Lantent vector (comma separated)",
+            prompt="Latent vector (comma separated)",
             callback=_validate_latent_vector,
         ),
     ],
@@ -74,13 +73,14 @@ def generate(
         typer.Option(
             "--save",
             "-s",
-            help="Path to save the generated image",
+            help="Path where to save the generated image",
+            prompt="Path to save the generated image",
         ),
     ] = "images/image.jpg",
-    plot: Annotated[bool, typer.Option(help="Plot the generated image")] = False,
+    plot: Annotated[bool, typer.Option(help="Plot the generated image")] = True,
 ):
     """
-    Train a Variational Autoencoder
+    Generate an image from a given latent vector using a trained VAE model.
     """
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -102,9 +102,7 @@ def generate(
     # convert the latent vector to tensor
     latent_vector = torch.tensor(latent_vector).to(device)
 
-    # Use torch.no_grad() to disable gradient computation during inference
-    with torch.no_grad():
-        output = model.decoder(latent_vector)
+    output = model.decoder(latent_vector)
 
     image = _reshape_image(output, config["data_shape"])
 
