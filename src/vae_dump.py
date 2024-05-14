@@ -28,7 +28,7 @@ def _input_file_to_tensor(input: str, config: dict):
     image = Image.open(input)
     # transform to tensor
     image = transform(image).to(device)
-    return image.view(-1, config["initial_dim"]).to(device)
+    return image.view(-1).to(device)
 
 
 def _validate_input(input: str):
@@ -41,6 +41,14 @@ def _validate_input(input: str):
         raise typer.BadParameter("Please provide a valid path to an image or directory")
 
     return input
+
+
+def _validate_save(save: str):
+    if not save.lower().endswith(".csv"):
+        raise typer.BadParameter(
+            "Please provide a valid path to a CSV File to save the latent dump"
+        )
+    return save
 
 
 app = typer.Typer(pretty_exceptions_show_locals=False, add_completion=False)
@@ -67,6 +75,7 @@ def dump(
             "--save",
             "-s",
             help="Path to save the latent dump",
+            callback=_validate_save,
         ),
     ] = "dumps/latent.csv",
 ):
@@ -89,13 +98,30 @@ def dump(
         input = _input_file_to_tensor(input, config)
 
         mean, logvar = model.encoder(input)
-        std = torch.sqrt(torch.exp(logvar))
-        print("Mean: ", mean.cpu().detach().numpy())
-        print("Standard deviation", std.cpu().detach().numpy())
+        mean = mean.cpu().detach().numpy()
+        std = torch.sqrt(torch.exp(logvar)).cpu().detach().numpy()
+        print("Mean: ", mean)
+        print("Standard deviation", std)
+
     else:
-        # TODO: Implement directory processing
-        # dataloader and save to dataframe
-        pass
+        dumps = []
+        for root, _, files in os.walk(input):
+            class_name = os.path.basename(root)
+            for file in files:
+                if file.lower().endswith((".png", ".jpg", ".jpeg")):
+                    image_path = os.path.join(root, file)
+                    image = _input_file_to_tensor(image_path, config)
+                    mean, logvar = model.encoder(image)
+                    mean = mean.cpu().detach().numpy()
+                    std = torch.sqrt(torch.exp(logvar)).cpu().detach().numpy()
+                    dumps.append([image_path, class_name, mean, std])
+
+        dumps = pd.DataFrame(dumps, columns=["Image", "label", "Mean", "Std"])
+        dir_path = os.path.dirname(save)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        dumps.to_csv(save, index=False)
+        print(f"Latent vectors saved to {save}")
 
 
 if __name__ == "__main__":

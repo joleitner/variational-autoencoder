@@ -6,6 +6,7 @@ import os
 import typer
 from typing import Annotated
 from rich import print
+from rich.progress import track
 from model import VAE
 from utils import load_dataset, save_model_config, save_checkpoint
 
@@ -26,6 +27,8 @@ def _validate_hidden_dims(hidden_dims: str):
 
 
 def _validate_resize(resize: str):
+    if resize is None:
+        return None
     try:
         valid = [int(item) for item in resize.split(",")]
         if len(valid) != 2:
@@ -46,7 +49,7 @@ def train(
             "--data-path",
             "-d",
             help="Path to the data",
-            rich_help_panel="Train data",
+            rich_help_panel="Training parameters",
             prompt="Path to the dataset to train on",
             show_default=False,
         ),
@@ -54,15 +57,17 @@ def train(
     batch_size: Annotated[
         int,
         typer.Option(
-            help="Batch size", rich_help_panel="Train data", prompt="Batch size for training"
+            help="Batch size",
+            rich_help_panel="Training parameters",
+            prompt="Batch size for training",
         ),
     ] = 32,
     resize: Annotated[
         str,
         typer.Option(
             help="Resize of original image",
-            rich_help_panel="Train data",
-            prompt="Resize input image (width, height)",
+            rich_help_panel="Training parameters",
+            # prompt="Resize input image (width, height)",
             callback=_validate_resize,
         ),
     ] = None,
@@ -110,7 +115,7 @@ def train(
     if resize:
         resize = tuple([int(item) for item in resize.split(",")])
 
-    data_loader = load_dataset(data_path, batch_size, resize, grayscale=False)
+    data_loader = load_dataset(data_path, batch_size, resize, grayscale=True)
     # Calculate the initial dimensions (input size) for the VAE model
     images, _ = next(iter(data_loader))
     initial_dim = images[0].view(-1).shape[0]
@@ -128,7 +133,9 @@ def train(
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     # Train the model
-    for epoch in range(epochs):
+    for epoch in track(
+        range(epochs), description="Training process"
+    ):  # track is showing a progress bar
 
         overall_loss = 0
         for batch_idx, (x, _) in enumerate(data_loader):
@@ -153,6 +160,7 @@ def train(
         "hidden_dims": hidden_dims,
         "latent_dim": latent_dim,
         "data_shape": images[0].shape,
+        "grayscale": True,
     }
     if resize:
         config["resize"] = resize
