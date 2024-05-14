@@ -19,17 +19,12 @@ class VariationalEncoder(nn.Module):
         self.mean_layer = nn.Linear(hidden_dims[-1], latent_dim)
         self.logvar_layer = nn.Linear(hidden_dims[-1], latent_dim)
         self.N = torch.distributions.Normal(0, 1)
-        self.kld = 0
         self.device = device
-
-    def kl_divergence(self, mean, log_var):
-        return -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
 
     def forward(self, x):
         x = F.relu(self.linear1(x))
         x = self.hidden_layers(x)
         mean, logvar = self.mean_layer(x), self.logvar_layer(x)
-        self.kld = self.kl_divergence(mean, logvar)
         return mean, logvar
 
 
@@ -74,7 +69,22 @@ class VAE(nn.Module):
         return z
 
     def forward(self, x):
-        mean, logvar = self.encoder(x)
-        z = self.reparameterization(mean, logvar)
+        mean, log_var = self.encoder(x)
+        z = self.reparameterization(mean, log_var)
         x_hat = self.decoder(z)
-        return x_hat
+        return [x_hat, mean, log_var, z]
+
+    def loss_function(self, x_hat, x, mean, log_var):
+        """
+        Computes VAE loss function
+        """
+        # reconstruction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
+        reconstruction_loss = nn.functional.binary_cross_entropy(
+            x_hat.reshape(x_hat.shape[0], -1), x.reshape(x.shape[0], -1), reduction="none"
+        ).sum(dim=-1)
+
+        kld_loss = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp(), dim=-1)
+
+        loss = (reconstruction_loss + kld_loss).mean(dim=0)
+
+        return loss

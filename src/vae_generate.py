@@ -11,7 +11,7 @@ import typer
 from typing import Annotated
 from rich import print
 from utils import load_model_config, load_checkpoint
-from model import VAE
+from models.vae import VAE
 
 
 def _validate_latent_vector(latent_vector: str):

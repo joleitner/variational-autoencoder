@@ -10,7 +10,7 @@ import typer
 from typing import Annotated
 from rich import print
 from utils import load_model_config, load_checkpoint
-from model import VAE
+from models.vae import VAE
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"

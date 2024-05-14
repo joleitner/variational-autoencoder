@@ -7,7 +7,7 @@ import typer
 from typing import Annotated
 from rich import print
 from rich.progress import track
-from models.vae import VAE
+from models.conv_vae import ConvVAE
 from utils import load_dataset, save_model_config, save_checkpoint
 
 
@@ -63,7 +63,7 @@ def train(
             # prompt="Resize input image (width, height)",
             callback=_validate_resize,
         ),
-    ] = None,
+    ] = "48,48",
     hidden_dims: Annotated[
         str,
         typer.Option(
@@ -72,7 +72,7 @@ def train(
             prompt="Hidden Dimensions (comma separated)",
             callback=_validate_hidden_dims,
         ),
-    ] = "512",
+    ] = "32,64,64",
     latent_dim: Annotated[
         int,
         typer.Option(
@@ -80,7 +80,7 @@ def train(
             rich_help_panel="Model Parameters",
             prompt="Latent Dimensions",
         ),
-    ] = 2,
+    ] = 10,
     epochs: Annotated[
         int,
         typer.Option(
@@ -97,7 +97,7 @@ def train(
     ] = "models/my_model",
 ):
     """
-    Define and train a Variational Autoencoder on a given dataset.
+    Define and train a Convolutional Variational Autoencoder on a given dataset.
 
 
     """
@@ -108,16 +108,14 @@ def train(
     if resize:
         resize = tuple([int(item) for item in resize.split(",")])
 
-    data_loader = load_dataset(data_path, batch_size, resize, grayscale=True)
-    # Calculate the initial dimensions (input size) for the VAE model
+    data_loader = load_dataset(data_path, batch_size, resize, grayscale=False)
     images, _ = next(iter(data_loader))
-    initial_dim = images[0].view(-1).shape[0]
     # Convert the hidden_dims string to a list of integers
     hidden_dims = [int(item) for item in hidden_dims.split(",")]
 
-    model = VAE(
-        initial_dim=initial_dim, hidden_dims=hidden_dims, latent_dim=latent_dim, device=device
-    ).to(device)
+    model = ConvVAE(hidden_dims=hidden_dims, latent_dim=latent_dim, image_shape=images[0].shape).to(
+        device
+    )
 
     print("Your created Model:")
     print(model)
@@ -131,26 +129,24 @@ def train(
     ):  # track is showing a progress bar
 
         overall_loss = 0
-        for batch_idx, (x, _) in enumerate(data_loader):
+        for x, _ in data_loader:
 
-            x = x.view(-1, initial_dim).to(device)
+            x = x.to(device)
 
             optimizer.zero_grad()
             x_hat, mean, log_var, _ = model(x)
             loss = model.loss_function(x_hat, x, mean, log_var)
-
-            print(loss)
-            overall_loss += loss.item()
+            # overall_loss += loss.item()
 
             loss.backward()
             optimizer.step()
 
-        loss = overall_loss / len(data_loader.dataset)
+        # loss = overall_loss / len(data_loader.dataset)
         print("\tEpoch", epoch + 1, "\tAverage Loss: {:.3f}".format(loss))
 
     # Save the model
     config = {
-        "initial_dim": initial_dim,
+        # "initial_dim": initial_dim,
         "hidden_dims": hidden_dims,
         "latent_dim": latent_dim,
         "data_shape": images[0].shape,
