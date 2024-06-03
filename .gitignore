@@ -1,5 +1,6 @@
 data/
 models/
+!src/models/
 __pycache__/
 images/
 

@@ -4,6 +4,8 @@ from torch.utils.data import DataLoader
 import torch
 import os
 import json
+import numpy as np
+from PIL import Image
 
 
 def load_dataset(path, batch_size, resize=None, grayscale=False, shuffle=True):
@@ -30,7 +32,7 @@ def save_model_config(config, path):
         os.makedirs(dir_path)
 
     with open(file_path, "w") as f:
-        json.dump(config, f)
+        json.dump(config, f, indent=2)
 
 
 def load_model_config(model_path):
@@ -58,3 +60,25 @@ def save_checkpoint(model, optimizer, epoch, loss, path):
 def load_checkpoint(model_path):
     checkpoint = torch.load(os.path.join(model_path, "checkpoint.tar"))
     return checkpoint
+
+
+def convert_tensor_to_image(tensor: torch.Tensor) -> Image.Image:
+    # detach the tensor from the GPU and convert to numpy array
+    image_array = tensor.detach().cpu().numpy()
+    # remove batch dimension
+    image_array = image_array.squeeze(0)
+
+    image_array = np.uint8(image_array * 255)
+
+    # If the image is grayscale
+    if image_array.shape[0] == 1:
+        image_array = image_array.squeeze(0)  # Remove channel dimension for grayscale
+        mode = "L"
+
+    # Transpose the dimensions from (C, H, W) to (H, W, C) for RGB
+    if image_array.ndim == 3:
+        image_array = np.transpose(image_array, (1, 2, 0))
+        mode = "RGB"
+
+    # Create a PIL image
+    return Image.fromarray(image_array, mode=mode)
