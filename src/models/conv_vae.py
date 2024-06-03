@@ -4,11 +4,13 @@ import torch.nn.functional as F
 import torch.utils
 import torch.distributions
 
+from src.models.vae_base import BaseVAE
+
 
 # inspired from: https://www.kaggle.com/code/darkrubiks/variational-autoencoder-with-pytorch#Creating-the-VAE-Model
 
 
-class ConvVAE(nn.Module):
+class ConvVAE(BaseVAE, nn.Module):
     def __init__(
         self,
         latent_dim: int = 20,
@@ -17,16 +19,25 @@ class ConvVAE(nn.Module):
     ):
         super(ConvVAE, self).__init__()
 
-        self.latent_dims = latent_dim  # Size of the latent space layer
-        self.hidden_dims = hidden_dims  # List of hidden layers number of filters/channels
-        self.image_shape = image_shape  # Input image shape
+        self.latent_dim: int = latent_dim
+        self.hidden_dims: list[int] = hidden_dims
+        self.image_shape: list[int] = image_shape  # Input image shape
+        self.kernel_size: int = 3  # Kernel size for the convolutions
+        self.stride: int = 2  # Stride for the convolutions
+        self.padding: int = 1
 
         self.last_channels = self.hidden_dims[-1]
         self.in_channels = self.image_shape[0]
-        # Simple formula to get the number of neurons after the last convolution layer is flattened
-        self.flattened_channels = int(
-            self.last_channels * (self.image_shape[1] / (2 ** len(self.hidden_dims))) ** 2
-        )
+
+        # Calculate the flattend channels after the convolutions
+        height, width = self.image_shape[1], self.image_shape[2]
+
+        for _ in self.hidden_dims:
+            height = (height + 2 * self.padding - self.kernel_size) // self.stride + 1
+            width = (width + 2 * self.padding - self.kernel_size) // self.stride + 1
+
+        self.flattened_channels = int(self.last_channels * height * width)
+        self.conv_output_shape = (self.last_channels, height, width)
 
         # For each hidden layer we will create a Convolution Block
         modules = []
@@ -36,9 +47,9 @@ class ConvVAE(nn.Module):
                     nn.Conv2d(
                         in_channels=self.in_channels,
                         out_channels=h_dim,
-                        kernel_size=3,
-                        stride=2,
-                        padding=1,
+                        kernel_size=self.kernel_size,
+                        stride=self.stride,
+                        padding=self.padding,
                     ),
                     nn.BatchNorm2d(h_dim),
                     nn.LeakyReLU(),
@@ -49,46 +60,47 @@ class ConvVAE(nn.Module):
 
         self.encoder = nn.Sequential(*modules)
 
-        # Here are our layers for our latent space distribution
+        # layers for our latent space distribution
         self.mean_layer = nn.Linear(self.flattened_channels, latent_dim)
         self.logvar_layer = nn.Linear(self.flattened_channels, latent_dim)
 
         # Decoder input layer
         self.decoder_input = nn.Linear(latent_dim, self.flattened_channels)
 
-        # For each Convolution Block created on the Encoder we will do a symmetric Decoder with the same Blocks, but using ConvTranspose
-        self.hidden_dims.reverse()
+        # Reverse hidden dimensions for decoder
+        hdim_reversed = hidden_dims.copy()
+        hdim_reversed.reverse()
+
         modules = []
-        for h_dim in self.hidden_dims:
+        for i in range(len(hdim_reversed) - 1):
             modules.append(
                 nn.Sequential(
                     nn.ConvTranspose2d(
-                        in_channels=self.in_channels,
-                        out_channels=h_dim,
-                        kernel_size=3,
-                        stride=2,
-                        padding=1,
-                        output_padding=1,
+                        in_channels=hdim_reversed[i],
+                        out_channels=hdim_reversed[i + 1],
+                        kernel_size=self.kernel_size,
+                        stride=self.stride,
+                        padding=self.padding,
                     ),
-                    nn.BatchNorm2d(h_dim),
+                    nn.BatchNorm2d(hdim_reversed[i + 1]),
                     nn.LeakyReLU(),
                 )
             )
 
-            self.in_channels = h_dim
-
         self.decoder = nn.Sequential(*modules)
 
-        # The output layer the reconstructed image have the same dimensions as the input image
         self.output_layer = nn.Sequential(
-            nn.Conv2d(
-                in_channels=self.in_channels,
+            nn.ConvTranspose2d(
+                in_channels=hdim_reversed[-1],
                 out_channels=self.image_shape[0],
-                kernel_size=3,
-                padding=1,
+                kernel_size=self.kernel_size,
+                stride=self.stride,
+                padding=self.padding,
             ),
-            nn.Sigmoid(),
+            nn.Sigmoid(),  # To ensure the output is between 0 and 1
         )
+
+        self.upsample = nn.Upsample(size=self.image_shape[1:], mode="bilinear", align_corners=True)
 
     def encode(self, input):
         """
@@ -97,7 +109,7 @@ class ConvVAE(nn.Module):
         """
         result = self.encoder(input)
         result = torch.flatten(result, start_dim=1)
-        # Split the result into mu and var componentsbof the latent Gaussian distribution
+        # Split the result into mu and var components the latent Gaussian distribution
         mean = self.mean_layer(result)
         log_var = self.logvar_layer(result)
 
@@ -110,12 +122,11 @@ class ConvVAE(nn.Module):
         result = self.decoder_input(z)
         result = result.view(
             -1,
-            self.last_channels,
-            int(self.image_shape[1] / (2 ** len(self.hidden_dims))),
-            int(self.image_shape[2] / (2 ** len(self.hidden_dims))),
+            *self.conv_output_shape,
         )
         result = self.decoder(result)
         result = self.output_layer(result)
+        result = self.upsample(result)  # Ensure the output is the same size as the input
 
         return result
 
@@ -130,7 +141,7 @@ class ConvVAE(nn.Module):
 
     def forward(self, x):
         """
-        Forward method which will encode and decode our image.
+        Forward method of model to encode and decode our image.
         """
         mean, log_var = self.encode(x)
         z = self.reparameterization(mean, log_var)
@@ -142,12 +153,11 @@ class ConvVAE(nn.Module):
         """
         Computes VAE loss function
         """
-        reconstruction_loss = nn.functional.binary_cross_entropy(
-            x_hat.reshape(x_hat.shape[0], -1), x.reshape(x.shape[0], -1), reduction="none"
-        ).sum(dim=-1)
-
+        reconstruction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
+        # reconstruction_loss = nn.functional.binary_cross_entropy(
+        #     x_hat.reshape(x_hat.shape[0], -1), x.reshape(x.shape[0], -1), reduction="none"
+        # ).sum(dim=-1)
         kld_loss = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp(), dim=-1)
-
         loss = (reconstruction_loss + kld_loss).mean(dim=0)
 
         return loss
@@ -157,8 +167,22 @@ class ConvVAE(nn.Module):
         Samples from the latent space and return the corresponding
         image space map.
         """
-        z = torch.randn(1, self.latent_dims)
+        z = torch.randn(1, self.latent_dim)
         z = z.to(device)
+        self.eval()
         sample = self.decode(z)
-
         return sample
+
+    def generate(self, z, device):
+        """
+        Generate an image from the given latent vector
+        """
+        z = z.to(device)
+        self.eval()
+        return self.decode(z)
+
+    def prepare_data(self, data, device):
+        """
+        Prepare the data for forward pass
+        """
+        return data.to(device)
