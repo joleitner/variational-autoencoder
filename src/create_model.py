@@ -2,7 +2,7 @@ import torch
 from typing import Literal
 
 from src.models.conv_vae import ConvVAE
-from src.models.vae import VAE
+from src.models.fully_vae import FullyVAE
 from src.models.vae_base import BaseVAE
 
 
@@ -18,7 +18,7 @@ def create_vae_model(
     if model_type == "conv":
         model = ConvVAE(latent_dim=latent_dim, hidden_dims=hidden_dims, image_shape=image_shape)
     elif model_type == "fully":
-        model = VAE(latent_dim=latent_dim, hidden_dims=hidden_dims, image_shape=image_shape)
+        model = FullyVAE(latent_dim=latent_dim, hidden_dims=hidden_dims, image_shape=image_shape)
     else:
         raise ValueError(
             "Model type not recognized. Please choose from 'fully_connected' or 'convolutional'"

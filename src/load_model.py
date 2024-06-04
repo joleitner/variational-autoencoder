@@ -3,7 +3,7 @@ from typing import Literal
 
 import src.utils as utils
 from src.models.conv_vae import ConvVAE
-from src.models.vae import VAE
+from src.models.fully_vae import FullyVAE
 from src.models.vae_base import BaseVAE
 
 
@@ -22,11 +22,10 @@ def load_model(path: str) -> tuple[BaseVAE, Literal["cuda", "cpu"]]:
             image_shape=config["image_shape"],
         )
     elif config["model_type"] == "fully":
-        model = VAE(
-            initial_dim=config["initial_dim"],
-            hidden_dims=config["hidden_dims"],
+        model = FullyVAE(
             latent_dim=config["latent_dim"],
-            device=device,
+            hidden_dims=config["hidden_dims"],
+            image_shape=config["image_shape"],
         )
 
     model.to(device)

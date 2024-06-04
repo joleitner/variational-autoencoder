@@ -11,10 +11,16 @@ def train_model(
     model: BaseVAE,
     data_loader: DataLoader,
     epochs: int,
+    checkpoint: dict = None,
 ) -> tuple[BaseVAE, torch.optim.Optimizer, float]:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    epoch_start = 0
+
+    if checkpoint:
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        epoch_start = checkpoint["epoch"]
 
     # Train the model
     for epoch in track(
@@ -36,6 +42,6 @@ def train_model(
             optimizer.step()
 
         loss = overall_loss / batch_idx
-        print("\tEpoch", epoch + 1, "\tAverage Loss: {:.4f}".format(loss))
+        print("\tEpoch", epoch + 1 + epoch_start, "\tAverage Loss: {:.4f}".format(loss))
 
     return model, optimizer, loss

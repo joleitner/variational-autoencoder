@@ -112,6 +112,7 @@ def train_convolutional(
         "image_shape": image_shape,
         "grayscale": grayscale,
         "model_type": "conv",
+        "epochs": epochs,
     }
     if resize:
         config["resize"] = resize

@@ -6,14 +6,14 @@ import torch.distributions
 from src.models.vae_base import BaseVAE
 
 
-class VAE(BaseVAE, nn.Module):
+class FullyVAE(BaseVAE, nn.Module):
     def __init__(
         self,
         latent_dim: int = 2,
         hidden_dims: list[int] = [512],
         image_shape: list[int] = [1, 28, 28],
     ):
-        super(VAE, self).__init__()
+        super(FullyVAE, self).__init__()
 
         self.latent_dim: int = latent_dim
         self.hidden_dims: list[int] = hidden_dims
@@ -67,36 +67,6 @@ class VAE(BaseVAE, nn.Module):
         x_hat = self.decoder(z)
         return x_hat
 
-    def reparameterization(self, mean, log_var):
-        """
-        Reparameterization trick to sample from N(mu, var) from N(0,1).
-        """
-        std = torch.exp(0.5 * log_var)  # std deviation
-        epsilon = torch.randn_like(std)
-        z = mean + std * epsilon
-        return z
-
-    def forward(self, x):
-        mean, log_var = self.encode(x)
-        z = self.reparameterization(mean, log_var)
-        x_hat = self.decode(z)
-
-        return [x_hat, mean, log_var, z]
-
-    def loss_function(self, x_hat, x, mean, log_var):
-        """
-        Computes VAE loss function
-        """
-        reconstruction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
-        # reconstruction_loss = nn.functional.binary_cross_entropy(
-        #     x_hat.reshape(x_hat.shape[0], -1), x.reshape(x.shape[0], -1), reduction="none"
-        # ).sum(dim=-1)
-
-        kld_loss = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp(), dim=-1)
-        loss = (reconstruction_loss + kld_loss).mean(dim=0)
-
-        return loss
-
     def sample(self, device, std_dev=1.0):
         """
         Samples from the latent space and return the corresponding
@@ -113,7 +83,7 @@ class VAE(BaseVAE, nn.Module):
         """
         Generate an image from the given latent vector
         """
-        z = z.to(device)
+        z = torch.tensor(z).to(device)
         self.eval()
         result = self.decode(z)
         # reshape the result to the image shape

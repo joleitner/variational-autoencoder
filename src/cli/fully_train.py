@@ -74,7 +74,7 @@ def train_fully_connected(
     ] = "models/my_model",
 ):
     """
-    Define and train a Variational Autoencoder on a given dataset.
+    Define and train a fully-connected Variational Autoencoder model.
     """
 
     # convert input strings to appropriate types
@@ -106,6 +106,7 @@ def train_fully_connected(
         "image_shape": image_shape,
         "grayscale": True,
         "model_type": "fully",
+        "epochs": epochs,
     }
     if resize:
         config["resize"] = resize
