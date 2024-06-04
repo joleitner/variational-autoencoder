@@ -37,11 +37,11 @@ def train_model(
             optimizer.zero_grad()
             x_hat, mean, log_var, _ = model(x)
             loss = model.loss_function(x_hat, x, mean, log_var)
-            overall_loss += loss
+            overall_loss += loss.item()
             loss.backward()
             optimizer.step()
 
-        loss = overall_loss / batch_idx
+        loss = overall_loss / (batch_idx * data_loader.batch_size)
         print("\tEpoch", epoch + 1 + epoch_start, "\tAverage Loss: {:.4f}".format(loss))
 
     return model, optimizer, loss

@@ -43,12 +43,12 @@ class BaseVAE(ABC):
         """
         Computes VAE loss function
         """
-        reconstruction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction="mean")
+        reconstruction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
         # reconstruction_loss = nn.functional.binary_cross_entropy(
         #     x_hat.reshape(x_hat.shape[0], -1), x.reshape(x.shape[0], -1), reduction="none"
         # ).sum(dim=-1)
         kld_loss = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp(), dim=-1)
-        loss = (reconstruction_loss + kld_loss).mean(dim=0)
+        loss = (reconstruction_loss + kld_loss).mean()
 
         return loss
 
@@ -64,6 +64,13 @@ class BaseVAE(ABC):
     def generate(self, z, device):
         """
         Generate an image from the given latent vector
+        """
+        pass
+
+    @abstractmethod
+    def dump_latent(self, input, device):
+        """
+        Dumps the latent vector of the input
         """
         pass
 

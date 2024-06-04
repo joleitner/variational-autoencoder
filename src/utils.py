@@ -82,3 +82,20 @@ def convert_tensor_to_image(tensor: torch.Tensor) -> Image.Image:
 
     # Create a PIL image
     return Image.fromarray(image_array, mode=mode)
+
+
+def image_to_tensor(
+    file_path: str, resize: tuple[int, int] = None, grayscale: bool = False
+) -> torch.Tensor:
+    transform = []
+    if resize:
+        transform.append(transforms.Resize(resize))
+    if grayscale:
+        transform.append(transforms.Grayscale())
+    transform.append(transforms.ToTensor())
+    transform = transforms.Compose(transform)
+    # load image
+    image = Image.open(file_path)
+    # transform to tensor
+    image = transform(image)
+    return image

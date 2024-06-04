@@ -135,10 +135,9 @@ class ConvVAE(BaseVAE, nn.Module):
         Samples from the latent space and return the corresponding
         image space map.
         """
+        self.eval()
         z = torch.randn(1, self.latent_dim)
         z = z.to(device)
-        print(z)
-        self.eval()
         sample = self.decode(z)
         return sample
 
@@ -146,12 +145,31 @@ class ConvVAE(BaseVAE, nn.Module):
         """
         Generate an image from the given latent vector
         """
-        z = torch.tensor(z).to(device)
         self.eval()
+        z = torch.tensor(z).to(device)
         return self.decode(z)
+
+    def dump_latent(self, input, device):
+        """
+        Dumps the latent vector of the input
+        """
+        self.eval()
+        input = self.prepare_data(input, device)
+        mean, logvar = self.encode(input)
+        # remove the batch dimension
+        mean, logvar = mean.squeeze(0), logvar.squeeze(0)
+        # convert the mean and logvar to numpy
+        mean = mean.cpu().detach().numpy()
+        std = torch.sqrt(torch.exp(logvar)).cpu().detach().numpy()
+        return mean, std
 
     def prepare_data(self, data, device):
         """
         Prepare the data for forward pass
         """
+        # in case data has not 4 dimensions add a batch dimension
+
+        if len(data.shape) == 3:
+            data = data.unsqueeze(0)
+
         return data.to(device)

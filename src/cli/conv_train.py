@@ -63,13 +63,13 @@ def train_convolutional(
             rich_help_panel="Model Parameters",
             prompt="Latent Dimensions",
         ),
-    ] = 10,
+    ] = 3,
     epochs: Annotated[
         int,
         typer.Option(
             help="Epochs to train", rich_help_panel="Training parameters", prompt="Epochs"
         ),
-    ] = 10,
+    ] = 30,
     save: Annotated[
         str,
         typer.Option(

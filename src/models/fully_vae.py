@@ -67,16 +67,16 @@ class FullyVAE(BaseVAE, nn.Module):
         x_hat = self.decoder(z)
         return x_hat
 
-    def sample(self, device, std_dev=1.0):
+    def sample(self, device):
         """
         Samples from the latent space and return the corresponding
         image space map.
         """
-        z = torch.randn(std_dev, self.latent_dim).to(device)
+        z = torch.randn(1, self.latent_dim).to(device)
         self.eval()
         sample = self.decode(z)
-        # reshape the result to the image shape
-        result = result.view(-1, *self.image_shape)
+        # reshape the sample to the image shape
+        sample = sample.view(-1, *self.image_shape)
         return sample
 
     def generate(self, z, device):
@@ -89,6 +89,19 @@ class FullyVAE(BaseVAE, nn.Module):
         # reshape the result to the image shape
         result = result.view(-1, *self.image_shape)
         return result
+
+    def dump_latent(self, input, device):
+        """
+        Dumps the latent vector of the input
+        """
+        input = self.prepare_data(input, device)
+        mean, logvar = self.encode(input)
+        # remove the batch dimension
+        mean, logvar = mean.squeeze(0), logvar.squeeze(0)
+        # convert the mean and logvar to numpy
+        mean = mean.cpu().detach().numpy()
+        std = torch.sqrt(torch.exp(logvar)).cpu().detach().numpy()
+        return mean, std
 
     def prepare_data(self, data, device):
         return data.view(-1, self.initial_dim).to(device)
