@@ -97,9 +97,7 @@ def train_fully_connected(
     print(model)
     print(f"Training starting on [bold green]{str(device).upper()}[/bold green]")
 
-    model, optimizer, loss = train_model(model=model, data_loader=data_loader, epochs=epochs)
-
-    # Save the model
+    # Save model configuration
     config = {
         "hidden_dims": hidden_dims,
         "latent_dim": latent_dim,
@@ -107,13 +105,16 @@ def train_fully_connected(
         "grayscale": True,
         "model_type": "fully",
         "epochs": epochs,
+        "loss_history": [],
     }
     if resize:
         config["resize"] = resize
 
     utils.save_model_config(config, path=save)
-    utils.save_checkpoint(model, optimizer, epochs, loss, path=save)
-    print(f"Model saved to [bold green]{save}[/bold green] :floppy_disk:")
+
+    train_model(model=model, data_loader=data_loader, epochs=epochs, save_path=save)
+
+    print(f"Model successfully trained and saved to [bold green]{save}[/bold green] :floppy_disk:")
 
 
 if __name__ == "__main__":

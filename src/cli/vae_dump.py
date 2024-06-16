@@ -7,6 +7,7 @@ import os
 import typer
 from typing import Annotated
 from rich import print
+import json
 
 from src.load_model import load_model
 import src.utils as utils
@@ -79,10 +80,13 @@ def dump(
                     mean, std = model.dump_latent(image, device)
                     dumps.append([image_path, class_name, mean, std])
 
-        dumps = pd.DataFrame(dumps, columns=["Image", "label", "Mean", "Std"])
+        dumps = pd.DataFrame(dumps, columns=["image", "label", "mean", "std"])
         dir_path = os.path.dirname(save)
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
+        # convert lists to string for saving
+        dumps["mean"] = dumps["mean"].apply(lambda x: json.dumps(x.tolist()))
+        dumps["std"] = dumps["std"].apply(lambda x: json.dumps(x.tolist()))
         dumps.to_csv(save, index=False)
         print(f"Latent vectors saved to {save}")
 

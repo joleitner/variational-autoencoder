@@ -5,6 +5,7 @@ from rich import print
 from rich.progress import track
 
 from src.models.vae_base import BaseVAE
+import src.utils as utils
 
 
 def train_model(
@@ -12,6 +13,7 @@ def train_model(
     data_loader: DataLoader,
     epochs: int,
     checkpoint: dict = None,
+    save_path: str = None,
 ) -> tuple[BaseVAE, torch.optim.Optimizer, float]:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -41,7 +43,15 @@ def train_model(
             loss.backward()
             optimizer.step()
 
-        loss = overall_loss / (batch_idx * data_loader.batch_size)
+        loss = overall_loss / len(data_loader.dataset)
         print("\tEpoch", epoch + 1 + epoch_start, "\tAverage Loss: {:.4f}".format(loss))
+
+        # when save path is defined save model for each epoch
+        if save_path:
+            config = utils.load_model_config(save_path)
+            config["epochs"] = epoch + 1 + epoch_start
+            config["loss_history"].append(loss)
+            utils.save_model_config(config, path=save_path)
+            utils.save_checkpoint(model, optimizer, epoch + 1 + epoch_start, loss, save_path)
 
     return model, optimizer, loss

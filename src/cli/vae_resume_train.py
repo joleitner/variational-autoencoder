@@ -63,13 +63,12 @@ def resume_training(
 
     print(f"Training continuing on [bold green]{str(device).upper()}[/bold green]")
 
-    model, optimizer, loss = train_model(
-        model=model, data_loader=data_loader, epochs=epochs, checkpoint=checkpoint
+    train_model(
+        model=model,
+        data_loader=data_loader,
+        epochs=epochs,
+        checkpoint=checkpoint,
+        save_path=model_path,
     )
 
-    total_epochs = checkpoint["epoch"] + epochs
-    config["epochs"] += total_epochs
-
-    utils.save_model_config(config, path=model_path)
-    utils.save_checkpoint(model, optimizer, total_epochs, loss, path=model_path)
     print(f"New checkpoint saved to [bold green]{model_path}[/bold green] :floppy_disk:")

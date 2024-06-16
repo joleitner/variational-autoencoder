@@ -3,5 +3,6 @@ models/
 !src/models/
 __pycache__/
 images/
+dumps/
 
 .DS_Store
