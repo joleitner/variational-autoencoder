@@ -12,6 +12,7 @@ dependencies:
   - seaborn
   - ipykernel
   - typer
+  - scikit-learn
   - pytorch
   - pytorch-cuda=12.1 # with gpu
   - torchvision
