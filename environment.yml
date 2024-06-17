@@ -4,6 +4,7 @@ channels:
   - defaults
   - pytorch
   - nvidia
+  - plotly
 dependencies:
   - python=3.11
   - numpy
@@ -17,3 +18,4 @@ dependencies:
   - pytorch-cuda=12.1 # with gpu
   - torchvision
   - torchaudio
+  - plotly
