@@ -1,8 +1,10 @@
-data/
+/data/*
+!data/README.md
 models/
 !src/models/
 __pycache__/
 images/
 dumps/
+.venv/
 
 .DS_Store

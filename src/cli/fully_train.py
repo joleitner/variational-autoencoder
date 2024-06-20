@@ -28,6 +28,8 @@ def train_fully_connected(
     batch_size: Annotated[
         int,
         typer.Option(
+            "--batch-size",
+            "-b",
             help="Batch size",
             rich_help_panel="Training parameters",
             prompt="Batch size for training",
@@ -36,14 +38,26 @@ def train_fully_connected(
     resize: Annotated[
         str,
         typer.Option(
+            "--resize",
+            "-r",
             help="Resize of original image [width, height]",
             rich_help_panel="Training parameters",
             callback=cli_utils.validate_resize,
         ),
     ] = None,
+    grayscale: Annotated[
+        bool,
+        typer.Option(
+            "--gray/--rgb",
+            help="Convert image to grayscale",
+            rich_help_panel="Training parameters",
+        ),
+    ] = True,
     hidden_dims: Annotated[
         str,
         typer.Option(
+            "--hidden-dims",
+            "-hdims",
             help="Dimensions of hidden layer(s) For multiple layers, separate by comma (e.g. 512,256)",
             rich_help_panel="Model Parameters",
             prompt="Hidden Dimensions (comma separated)",
@@ -53,6 +67,8 @@ def train_fully_connected(
     latent_dim: Annotated[
         int,
         typer.Option(
+            "--latent-dim",
+            "-ldim",
             help="Dimension of lantent space (z)",
             rich_help_panel="Model Parameters",
             prompt="Latent Dimensions",
@@ -61,12 +77,18 @@ def train_fully_connected(
     epochs: Annotated[
         int,
         typer.Option(
-            help="Epochs to train", rich_help_panel="Training parameters", prompt="Epochs"
+            "--epochs",
+            "-e",
+            help="Epochs to train",
+            rich_help_panel="Training parameters",
+            prompt="Epochs",
         ),
     ] = 30,
     save: Annotated[
         str,
         typer.Option(
+            "--save",
+            "-s",
             help="Path to save the model",
             rich_help_panel="Model Parameters",
             prompt="Where would you like to save the model?",
@@ -82,7 +104,7 @@ def train_fully_connected(
     if resize:
         resize = cli_utils.convert_resize(resize)
 
-    data_loader = utils.load_dataset(data_path, batch_size, resize, grayscale=True)
+    data_loader = utils.load_dataset(data_path, batch_size, resize, grayscale)
     images, _ = next(iter(data_loader))
     image_shape = images[0].shape
 
@@ -102,13 +124,12 @@ def train_fully_connected(
         "hidden_dims": hidden_dims,
         "latent_dim": latent_dim,
         "image_shape": image_shape,
+        "resize": resize if resize else image_shape[1:],
         "grayscale": True,
         "model_type": "fully",
         "epochs": epochs,
         "loss_history": [],
     }
-    if resize:
-        config["resize"] = resize
 
     utils.save_model_config(config, path=save)
 

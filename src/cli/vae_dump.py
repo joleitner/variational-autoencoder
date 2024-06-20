@@ -78,7 +78,7 @@ def dump(
                         image_path, resize=config.get("resize", None), grayscale=config["grayscale"]
                     )
                     mean, std = model.dump_latent(image, device)
-                    dumps.append([image_path, class_name, mean, std])
+                    dumps.append([os.path.join(class_name, file), class_name, mean, std])
 
         dumps = pd.DataFrame(dumps, columns=["image", "label", "mean", "std"])
         dir_path = os.path.dirname(save)

@@ -30,6 +30,8 @@ def resume_training(
     batch_size: Annotated[
         int,
         typer.Option(
+            "--batch-size",
+            "-b",
             help="Batch size",
             rich_help_panel="Training parameters",
             prompt="Batch size for training",
@@ -38,7 +40,11 @@ def resume_training(
     epochs: Annotated[
         int,
         typer.Option(
-            help="Epochs to resume training", rich_help_panel="Training parameters", prompt="Epochs"
+            "--epochs",
+            "-e",
+            help="Epochs to resume training",
+            rich_help_panel="Training parameters",
+            prompt="Epochs",
         ),
     ] = 10,
     # save: Annotated[
