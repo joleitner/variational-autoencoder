@@ -128,6 +128,7 @@ def train_convolutional(
         "grayscale": grayscale,
         "model_type": "conv",
         "epochs": epochs,
+        "batch_size": batch_size,
         "loss_history": [],
     }
 

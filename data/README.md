@@ -24,7 +24,13 @@ dataset_name
 
 To get started and test the VAE, [kaggle](https://www.kaggle.com/) is a great place to find datasets. Here are some examples:
 
+**Simple Datasets**
+
 - [MNIST](https://www.kaggle.com/datasets/scolianni/mnistasjpg) - Dataset of handwritten digits.
+- [Four Shapes](https://www.kaggle.com/datasets/smeschke/four-shapes) - Dataset of four shapes in grayscale.
+
+**More Complex Datasets**
+
 - [CelebA](https://www.kaggle.com/jessicali9530/celeba-dataset) - Large-scale CelebFaces Attributes Dataset.
 - [Geometric Shapes](https://www.kaggle.com/datasets/dineshpiyasamara/geometric-shapes-dataset) - Dataset of geometric shapes in different colors.
 

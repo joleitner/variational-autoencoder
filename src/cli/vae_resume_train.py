@@ -27,16 +27,6 @@ def resume_training(
             show_default=False,
         ),
     ],
-    batch_size: Annotated[
-        int,
-        typer.Option(
-            "--batch-size",
-            "-b",
-            help="Batch size",
-            rich_help_panel="Training parameters",
-            prompt="Batch size for training",
-        ),
-    ] = 32,
     epochs: Annotated[
         int,
         typer.Option(
@@ -47,13 +37,6 @@ def resume_training(
             prompt="Epochs",
         ),
     ] = 10,
-    # save: Annotated[
-    #     str,
-    #     typer.Option(
-    #         help="Path to save the model",
-    #         prompt="Where would you like to save the model?",
-    #     ),
-    # ] = "models/my_conv_model",
 ):
     """
     Resume training of a previously trained model.
@@ -61,7 +44,7 @@ def resume_training(
 
     config = utils.load_model_config(model_path)
     data_loader = utils.load_dataset(
-        data_path, batch_size, config.get("resize", None), config["grayscale"]
+        data_path, config["batch_size"], config["resize"], config["grayscale"]
     )
 
     model, device = load_model(model_path)

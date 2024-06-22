@@ -14,10 +14,11 @@ def train_model(
     epochs: int,
     checkpoint: dict = None,
     save_path: str = None,
+    learning_rate: float = 1e-3,
 ) -> tuple[BaseVAE, torch.optim.Optimizer, float]:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     epoch_start = 0
 
     if checkpoint:

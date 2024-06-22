@@ -128,6 +128,7 @@ def train_fully_connected(
         "grayscale": True,
         "model_type": "fully",
         "epochs": epochs,
+        "batch_size": batch_size,
         "loss_history": [],
     }
 
