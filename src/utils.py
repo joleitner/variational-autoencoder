@@ -57,8 +57,11 @@ def save_checkpoint(model, optimizer, epoch, loss, path):
     torch.save(checkpoint, file_path)
 
 
-def load_checkpoint(model_path):
-    checkpoint = torch.load(os.path.join(model_path, "checkpoint.tar"))
+def load_checkpoint(model_path, device):
+
+    checkpoint = torch.load(
+        os.path.join(model_path, "checkpoint.tar"), map_location=torch.device(device)
+    )
     return checkpoint
 
 

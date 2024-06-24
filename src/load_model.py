@@ -14,7 +14,7 @@ def load_model(path: str) -> tuple[BaseVAE, Literal["cuda", "cpu"]]:
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     config = utils.load_model_config(path)
-    checkpoint = utils.load_checkpoint(path)
+    checkpoint = utils.load_checkpoint(path, device)
     if config["model_type"] == "conv":
         model = ConvVAE(
             latent_dim=config["latent_dim"],
