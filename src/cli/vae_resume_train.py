@@ -48,7 +48,7 @@ def resume_training(
     )
 
     model, device = load_model(model_path)
-    checkpoint = utils.load_checkpoint(model_path)
+    checkpoint = utils.load_checkpoint(model_path, device)
 
     print(f"Training continuing on [bold green]{str(device).upper()}[/bold green]")
 

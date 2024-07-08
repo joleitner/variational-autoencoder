@@ -43,7 +43,10 @@ class BaseVAE(ABC):
         """
         Computes VAE loss function
         """
-        reconstruction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
+        # Mean squared error for grayscale and rgb images
+        reconstruction_loss = nn.functional.mse_loss(x_hat, x, reduction="sum")
+        # Binary cross entropy loss for binary images (black and white)
+        # reconstruction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
         kld_loss = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp(), dim=-1)
         loss = (reconstruction_loss + kld_loss).mean()
 
